@@ -82,11 +82,40 @@ public class ElmQueryContext {
         return result;
     }
 
+    public Boolean hasThisAlias() {
+        if (aliasContexts.size() > 0 && aliasContexts.get(0).getAlias().equals("$this")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // Is there a context with the alias
+    public Boolean hasAlias(String alias) {
+        if (aliasContexts.size() > 0) {
+            for (ElmQueryAliasContext aliasContexts : aliasContexts){
+                if (aliasContexts.getAlias().equals(alias)){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public Boolean hasAliasContext() {
+        return aliasContexts.size() > 0;
+    }
+
     public ElmQueryAliasContext resolveAlias(String aliasName) {
         for (ElmQueryAliasContext aliasContext : aliasContexts) {
-            if (aliasContext.getAlias().equals(aliasName)) {
-                return aliasContext;
-            }
+            if (aliasName.equals("$this")){
+                 return aliasContext;
+            } else {
+                if (aliasContext.getAlias().equals(aliasName)) {
+                    return aliasContext;
+                }
+           }
         }
 
         return null;
@@ -106,7 +135,9 @@ public class ElmQueryContext {
         ElmQueryAliasContext aliasContext = getAliasContext(querySource);
         if (aliasContext != null) {
             aliasContexts.remove(aliasContext);
-            queryRequirement.addDataRequirements(aliasContext.getRequirements());
+            for (ElmDataRequirement requirement : aliasContext.getRequirements()){
+                queryRequirement.addDataRequirements(requirement);
+            }
         }
         aliasContexts.removeIf(x -> x.getAlias().equals(querySource.getAlias()));
     }
@@ -120,12 +151,16 @@ public class ElmQueryContext {
     public ElmQueryRequirement getQueryRequirement(ElmRequirement childRequirements, ElmRequirementsContext context) {
         // Gather requirements from any lets in scope in the query
         for (ElmQueryLetContext letContext : letContexts) {
-            queryRequirement.addDataRequirements(letContext.getRequirements());
+            for (ElmDataRequirement requirement : letContext.getRequirements()){
+                queryRequirement.addDataRequirements(requirement);
+            }
         }
 
         // Gather requirements from any sources still in scope in the query
         for (ElmQueryAliasContext aliasContext : aliasContexts) {
-            queryRequirement.addDataRequirements(aliasContext.getRequirements());
+            for (ElmDataRequirement requirement : aliasContext.getRequirements()){
+                queryRequirement.addDataRequirements(requirement);
+            }
         }
 
         // add child requirements gathered during the context

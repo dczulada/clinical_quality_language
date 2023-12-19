@@ -220,7 +220,7 @@ public class ComparableElmRequirement {
                 && stringsEqual(retrieve.getContextSearch(), otherRetrieve.getContextSearch())
                 && stringsEqual(retrieve.getCodeProperty(), otherRetrieve.getCodeProperty())
                 && stringsEqual(retrieve.getCodeSearch(), otherRetrieve.getCodeSearch())
-                && stringsEqual(retrieve.getCodeComparator(), otherRetrieve.getCodeComparator())
+                //&& stringsEqual(retrieve.getCodeComparator(), otherRetrieve.getCodeComparator())
                 && stringsEqual(retrieve.getValueSetProperty(), otherRetrieve.getValueSetProperty())
                 && codesEqual(retrieve.getCodes(), otherRetrieve.getCodes())
                 && stringsEqual(retrieve.getDateProperty(), otherRetrieve.getDateProperty())
@@ -232,7 +232,7 @@ public class ComparableElmRequirement {
                 && stringsEqual(retrieve.getIdSearch(), otherRetrieve.getIdSearch())
                 && stringsEqual(retrieve.getId(), otherRetrieve.getId())
                 && codeFiltersEqual(retrieve.getCodeFilter(), otherRetrieve.getCodeFilter())
-                && dateFiltersEqual(retrieve.getDateFilter(), otherRetrieve.getDateFilter())
+                //&& dateFiltersEqual(retrieve.getDateFilter(), otherRetrieve.getDateFilter())
                 && otherFiltersEqual(retrieve.getOtherFilter(), otherRetrieve.getOtherFilter())
                 // TODO: support for collapsing includes
                 && stringsEqual(retrieve.getIncludedIn(), otherRetrieve.getIncludedIn())

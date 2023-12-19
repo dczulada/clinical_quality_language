@@ -1,10 +1,20 @@
 package org.cqframework.cql.elm.requirements;
 
+import java.lang.reflect.Field;
 import org.hl7.elm.r1.*;
+import org.hl7.fhir.r4.model.ServiceRequest;
+import org.hl7.fhir.r5.model.UriType;
+import org.hl7.fhir.r4.model.Type;
 
+import java.net.URISyntaxException;
+import java.net.URI;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import javax.xml.namespace.QName;
+
+import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toList;
 public class ElmRequirements extends ElmRequirement {
@@ -291,6 +301,51 @@ public class ElmRequirements extends ElmRequirement {
             }
         }
 
+        for (ElmFunctionRefContext functionRef : context.getFunctionReferences()){
+            List<ValueSetRef> visitedVsList = context.getVisitedValueSets(functionRef.getExpressionContext());
+            if (visitedVsList != null){
+                List<ElmDataRequirement> requirementsToAdd = new <ElmDataRequirement>ArrayList();
+                for (ValueSetRef visitedVs : visitedVsList){
+                    if (visitedVs.getName().equals("Present On Admission is Yes or Exempt") || visitedVs.getName().equals("Present on Admission is No or Unable To Determine")){
+                        continue;
+                    }
+                    if (functions.get(functionRef.getFunction().getLibraryName() + "." + functionRef.getFunction().getName() + "()") != null){
+                        FunctionDef functionDef = (FunctionDef)functions.get(functionRef.getFunction().getLibraryName() + "." + functionRef.getFunction().getName() + "()").getElement();
+                        org.hl7.cql.model.ClassType resultClass = null;
+                        if (functionDef.getResultType() instanceof org.hl7.cql.model.ClassType){
+                            resultClass = (org.hl7.cql.model.ClassType)functionDef.getResultType();
+                        } else if (functionDef.getResultType() instanceof org.hl7.cql.model.ListType) {
+                            org.hl7.cql.model.ListType resultList = (org.hl7.cql.model.ListType)functionDef.getResultType();
+                            resultClass = (org.hl7.cql.model.ClassType)resultList.getElementType();
+                        }
+                        if (resultClass != null && resultClass.getPrimaryCodePath() != null){
+                            ElmRequirements funtionDataRequirements = context.getReportedRequirements(functionDef);
+                            if (funtionDataRequirements != null){
+                                for (ElmRequirement elmReq : funtionDataRequirements.getRequirements()){
+                                    if (elmReq instanceof ElmDataRequirement){
+                                        ElmDataRequirement funtionDataRequirement = (ElmDataRequirement)elmReq;
+                                        org.hl7.elm.r1.Retrieve ogRet = (org.hl7.elm.r1.Retrieve)funtionDataRequirement.getElement();
+                                        if (ogRet.getCodeComparator() == null){
+                                            Retrieve newDataRet = new Retrieve();
+                                            newDataRet.setDataType(new QName("http://hl7.org/fhir",resultClass.getLabel()));
+                                            newDataRet.setCodes(visitedVs);
+                                            newDataRet.setCodeComparator("in");
+                                            newDataRet.setCodeProperty(resultClass.getPrimaryCodePath());
+                                            newDataRet.setTemplateId(resultClass.getIdentifier());
+                                            requirementsToAdd.add(new ElmDataRequirement(funtionDataRequirement.getLibraryIdentifier(), newDataRet));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                for (ElmDataRequirement requirementToAdd : requirementsToAdd){
+                    // result.reportRequirement(requirementToAdd);
+                    retrievesByType.get(requirementToAdd.getRetrieve().getTemplateId()).add(requirementToAdd);
+                }
+            }
+        }
 
         // Equivalent
             // Has the same context, type/profile, code path and date path
@@ -336,6 +391,55 @@ public class ElmRequirements extends ElmRequirement {
             }
         }
 
+        for (ElmRequirement requirement : result.getRequirements()){
+            if (requirement instanceof ElmDataRequirement) {
+                ElmDataRequirement dataRequirement = (ElmDataRequirement)requirement;
+                if (dataRequirement.getRetrieve().getCodeProperty() == null && !dataRequirement.getRetrieve().getTemplateId().equals("http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient") ){
+                    dataRequirement.getRetrieve().setTemplateId(null);
+                    dataRequirement.getRetrieve().setDataType(null);
+                }
+                if (dataRequirement.hasProperties()) {
+                    List<Property> propertiesToRemove = new ArrayList<Property>();
+                    for (Property p : dataRequirement.getProperties()) {
+                        Retrieve de = dataRequirement.getElement();
+
+                        List<CodeFilterElement> codeFiltersToRemove = new ArrayList<CodeFilterElement>();
+                        for (CodeFilterElement cfe : de.getCodeFilter()){
+                            if (cfe.getProperty().equals("url")){
+                                codeFiltersToRemove.add(cfe);
+                            }
+                        }
+                        for (CodeFilterElement ctr : codeFiltersToRemove){
+                            de.getCodeFilter().remove(ctr);
+                        }
+                        if (dataRequirement.getElement().getDataType() != null){
+                            try {
+                                Field what = Class.forName("org.hl7.fhir.r4.model." + dataRequirement.getElement().getDataType().getLocalPart()).getDeclaredField(p.getPath());
+                            }
+                            catch (NoSuchFieldException e){
+                                // Don't remove if the path is a url, this is an extension
+                                if (!p.getPath().contains("http://")){
+                                    if (p.getPath().contains(".")){
+                                        String subString = p.getPath().split(Pattern.quote("."))[1];
+                                        if (subString.equals("reference")){
+                                            propertiesToRemove.add(p);
+                                        }
+                                    } else {
+                                        propertiesToRemove.add(p);
+                                    }
+                                }
+                            }
+                            catch (ClassNotFoundException e){
+                                System.out.println(e);
+                            }
+                        }
+                    }
+                    for (Property pro : propertiesToRemove){
+                        dataRequirement.removeProperty(pro);
+                    }
+                }
+            }
+        }
         return result;
     }
 }

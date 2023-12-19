@@ -18,6 +18,7 @@ include (
     'cql-to-elm',
     'cql-to-elm-cli',
     'elm-fhir',
+    'elm-fhir-cli',
     'tools:cql-formatter',
     'tools:cql-parsetree',
     'tools:xsd-to-modelinfo'

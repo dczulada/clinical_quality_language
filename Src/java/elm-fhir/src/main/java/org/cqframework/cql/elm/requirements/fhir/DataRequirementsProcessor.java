@@ -22,6 +22,7 @@ import org.hl7.fhir.r5.model.Library;
 import org.hl7.fhir.r5.model.Enumerations.FHIRTypes;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.cqframework.cql.elm.requirements.ElmDataRequirement;
+import org.cqframework.cql.elm.requirements.ElmFunctionRefContext;
 import org.cqframework.cql.elm.requirements.ElmPertinenceContext;
 import org.cqframework.cql.elm.requirements.ElmRequirement;
 import org.cqframework.cql.elm.requirements.ElmRequirements;
@@ -37,6 +38,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class DataRequirementsProcessor {
 
@@ -119,14 +121,21 @@ public class DataRequirementsProcessor {
                         expressionDefs.add(ed);
                         visitor.visitElement(ed, context);
                     }
-                    else {
-                        // If the expression is the name of any functions, include those in the gather
-                        // TODO: Provide a mechanism to specify a function def (need signature)
-                        Iterable<FunctionDef> fds = translatedLibrary.resolveFunctionRef(expression);
-                        for (FunctionDef fd : fds) {
-                            expressionDefs.add(fd);
-                            visitor.visitElement(fd, context);
-                        }
+                }
+                for (String expression : expressions) {
+                    // If the expression is the name of any functions, include those in the gather
+                    // TODO: Provide a mechanism to specify a function def (need signature)
+                    Iterable<FunctionDef> fds = translatedLibrary.resolveFunctionRef(expression);
+                    for (FunctionDef fd : fds) {
+                        expressionDefs.add(fd);
+                        visitor.visitElement(fd, context);
+                    }
+                }
+                List<Element> previouslyVisitedElements = new ArrayList<Element>(context.getVisited());
+                for (int i = 0; i < previouslyVisitedElements.size(); i++){
+                    Element previouslyVisitedElement = previouslyVisitedElements.get(i);
+                    if (previouslyVisitedElement instanceof FunctionDef){
+                        visitor.visitElement(previouslyVisitedElement, context);
                     }
                 }
             }
@@ -229,21 +238,27 @@ public class DataRequirementsProcessor {
                         if (extensionFilterElement != null && extensionFilterComponent != null) {
                             String extensionName = extensionFilterComponent.getCodeFirstRep().getCode();
                             int tailIndex = extensionName.lastIndexOf("/");
-                            if (tailIndex > 0) {
-                                extensionName = extensionName.substring(tailIndex + 1);
-                            }
-                            if (extensionName.startsWith("us-core-")) {
-                                extensionName = extensionName.substring(8);
-                            }
-                            if (extensionName.startsWith("qicore-")) {
-                                extensionName = extensionName.substring(7);
-                            }
+                            // if (tailIndex > 0) {
+                            //     extensionName = extensionName.substring(tailIndex + 1);
+                            // }
+                            // if (extensionName.startsWith("us-core-")) {
+                            //     extensionName = extensionName.substring(8);
+                            // }
+                            // if (extensionName.startsWith("qicore-")) {
+                            //     extensionName = extensionName.substring(7);
+                            // }
                             r.getCodeFilter().remove(extensionFilterElement);
                             dataRequirement.removeProperty(urlProperty);
                             if (extensionProperty != null) {
                                 dataRequirement.removeProperty(extensionProperty);
                             }
-                            dataRequirement.addProperty(new Property().withPath(extensionName));
+                            dataRequirement.addProperty(new Property().withPath("extension('" + extensionName + "')"));
+                        }
+                    }
+                    if (r.getDataType() == null){
+                        dataRequirement.removeProperty(urlProperty);
+                        if (extensionProperty != null) {
+                            dataRequirement.removeProperty(extensionProperty);
                         }
                     }
                 }
@@ -682,6 +697,10 @@ public class DataRequirementsProcessor {
             cfc.setValueSet(toReference(context.resolveValueSetRef(declaredLibraryIdentifier, vsr)));
         }
 
+        if (value instanceof CodeRef) {
+            resolveCodeFilterCodes(context, libraryIdentifier, cfc, value);
+        }
+
         if (value instanceof org.hl7.elm.r1.ToList) {
             org.hl7.elm.r1.ToList toList = (org.hl7.elm.r1.ToList)value;
             resolveCodeFilterCodes(context, libraryIdentifier, cfc, toList.getOperand());
@@ -803,7 +822,10 @@ public class DataRequirementsProcessor {
 
         // Add any additional code filters
         for (CodeFilterElement cfe : retrieve.getCodeFilter()) {
-            dr.getCodeFilter().add(toCodeFilterComponent(context, libraryIdentifier, cfe.getProperty(), cfe.getValue()));
+            // Only add the code filter if it doesn't already exist.
+            if (dr.getCodeFilter().stream().filter(x -> x.getPath().equals(cfe.getProperty())).collect(Collectors.toList()).isEmpty()){
+                dr.getCodeFilter().add(toCodeFilterComponent(context, libraryIdentifier, cfe.getProperty(), cfe.getValue()));
+            }
         }
 
         // Set date path if specified

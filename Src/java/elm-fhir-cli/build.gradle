@@ -1,0 +1,21 @@
+plugins {
+    id 'cql.java-conventions'
+    id 'cql.fhir-conventions'
+    id 'cql.library-conventions'
+    id 'cql.sca-conventions'
+    id 'cql.xjc-conventions'
+    id 'application'
+}
+
+dependencies {
+    implementation project(':elm-fhir')    
+    implementation project(':quick')
+    implementation project(':qdm')
+    implementation 'net.sf.jopt-simple:jopt-simple:4.7'
+    implementation project(':model-jackson')
+    implementation project(':elm-jackson')
+}
+
+application {
+    mainClass = 'org.cqframework.cql.elm.cli.Main'
+}
