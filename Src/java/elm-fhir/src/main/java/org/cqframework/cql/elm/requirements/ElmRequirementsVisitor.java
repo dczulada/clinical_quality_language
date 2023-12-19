@@ -4,6 +4,8 @@ import org.cqframework.cql.elm.visiting.ElmBaseLibraryVisitor;
 import org.hl7.cql.model.ListType;
 import org.hl7.elm.r1.*;
 
+import java.util.Set;
+import java.util.HashSet;
 import javax.xml.namespace.QName;
 
 /*
@@ -112,13 +114,13 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
             // If the expression ref is to a retrieve or a single-source query, surface it as an "inferred" requirement
             // in the referencing scope
             if (result instanceof ElmDataRequirement) {
-                ElmDataRequirement inferredRequirement = ElmDataRequirement.inferFrom((ElmDataRequirement)result);
+                ElmDataRequirement inferredRequirement = ElmDataRequirement.inferFrom((ElmDataRequirement)result).get(0);
                 // Should be being reported as a data requirement...
                 //context.reportRetrieve(inferredRequirement.getRetrieve());
                 result = inferredRequirement;
             }
             else if (result instanceof ElmQueryRequirement) {
-                ElmDataRequirement inferredRequirement = ElmDataRequirement.inferFrom((ElmQueryRequirement)result);
+                ElmDataRequirement inferredRequirement = ElmDataRequirement.inferFrom((ElmQueryRequirement)result).get(0);
                 // Should be being reported as a data requirement...
                 //context.reportRetrieve(inferredRequirement.getRetrieve());
                 result = inferredRequirement;
@@ -131,6 +133,13 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
     @Override
     public ElmRequirement visitFunctionRef(FunctionRef elm, ElmRequirementsContext context) {
         context.reportFunctionRef(elm);
+        Set<String> skipList = new HashSet<String>();
+        skipList.add("ToValue");
+        skipList.add("ToConcept");
+        skipList.add("toInterval");
+        if (!skipList.contains(elm.getName())){
+            context.addFunctionReference(new ElmFunctionRefContext(context.getCurrentExpressionDefContext(),elm));
+        }
         ElmRequirement result = super.visitFunctionRef(elm, context);
 
         // If the result is a data requirement and the function is cardinality-reducing,
@@ -145,7 +154,6 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
         if (result != null) {
             return result;
         }
-
         return new ElmExpressionRequirement(context.getCurrentLibraryIdentifier(), elm);
     }
 
@@ -510,7 +518,8 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
     @Override
     public ElmRequirement visitIf(If elm, ElmRequirementsContext context) {
         // TODO: Rewrite the if as equivalent logic
-        return new ElmOperatorRequirement(context.getCurrentLibraryIdentifier(), elm);
+        //return new ElmOperatorRequirement(context.getCurrentLibraryIdentifier(), elm);
+        return super.visitIf(elm, context);
     }
 
     @Override
@@ -1237,27 +1246,136 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
     @Override
     public ElmRequirement visitProperty(Property elm, ElmRequirementsContext context) {
         ElmRequirement visitResult = super.visitProperty(elm, context);
-
+        Property qualifiedProperty = null;
         // If the visit returns a property requirement, report as a qualified property
         if (visitResult instanceof ElmPropertyRequirement) {
             // The child is a property reference
             // Construct a new qualified property reference to report
             ElmPropertyRequirement visitPropertyRequirement = (ElmPropertyRequirement)visitResult;
-            Property qualifiedProperty = new Property();
+            qualifiedProperty = new Property();
             Property sourceProperty = visitPropertyRequirement.getProperty();
-            qualifiedProperty.setSource(sourceProperty.getSource());
-            qualifiedProperty.setScope(sourceProperty.getScope());
-            qualifiedProperty.setResultType(elm.getResultType());
-            qualifiedProperty.setResultTypeName(elm.getResultTypeName());
-            qualifiedProperty.setResultTypeSpecifier(elm.getResultTypeSpecifier());
-            qualifiedProperty.setLocalId(sourceProperty.getLocalId());
-            qualifiedProperty.setPath(sourceProperty.getPath() + "." + elm.getPath());
-            return context.reportProperty(qualifiedProperty);
+            if (!elm.getPath().equals("value")){
+                qualifiedProperty.setSource(sourceProperty.getSource());
+                qualifiedProperty.setScope(sourceProperty.getScope());
+                qualifiedProperty.setResultType(elm.getResultType());
+                qualifiedProperty.setResultTypeName(elm.getResultTypeName());
+                qualifiedProperty.setResultTypeSpecifier(elm.getResultTypeSpecifier());
+                qualifiedProperty.setLocalId(sourceProperty.getLocalId());
+                qualifiedProperty.setPath(sourceProperty.getPath() + "." + elm.getPath());
+                return context.reportProperty(qualifiedProperty);
+            }
+        }
+
+        if (visitResult != null && visitResult.element != null && visitResult.element instanceof OperandRef){
+            FunctionDef functionDef = (FunctionDef)context.getCurrentExpressionDefContext().getExpressionDef();
+            for (ElmFunctionRefContext functionRef : context.getFunctionReferences()) {
+            
+                if (functionRef.function.getName().equals(functionDef.getName())){
+                    if (functionRef.function.getOperand().get(0) instanceof AliasRef){
+                        AliasRef sourceAlias = (AliasRef)functionRef.function.getOperand().get(0);
+                        qualifiedProperty = new Property();
+                        qualifiedProperty.setSource(functionRef.getExpressionContext().getExpressionDef().getExpression());
+                        qualifiedProperty.setScope(sourceAlias.getName());
+                        qualifiedProperty.setResultType(elm.getResultType());
+                        qualifiedProperty.setResultTypeName(elm.getResultTypeName());
+                        qualifiedProperty.setResultTypeSpecifier(elm.getResultTypeSpecifier());
+                        qualifiedProperty.setLocalId(functionRef.function.getLocalId());
+                        qualifiedProperty.setPath(elm.getPath());
+                        // TODO: Resolve aliases from nested libraries
+                        try{
+                            context.reportProperty(qualifiedProperty);
+                        } catch (IllegalArgumentException e){
+
+                        }
+                    } else if (functionRef.getExpressionContext().getExpressionDef() instanceof FunctionDef){
+                        // TODO:  This is only here to bypass function operators that are a choice.  This makes it hard to work with nested paths.
+                        if (elm.getSource() instanceof OperandRef) {
+                            OperandRef what = (OperandRef)elm.getSource();
+                            if (what.getName().equals("choice")){
+                                return null;
+                            }
+                        }
+                        Set<String> nestedAliases = findNestedAliases(functionRef.getExpressionContext().getExpressionDef(), context, functionRef);
+                        for (String nestedAlias : nestedAliases){
+                            Set<Expression> nestedSources = findNestedSources(functionRef.getExpressionContext().getExpressionDef(), nestedAlias, context, functionRef);
+                            for (Expression nestedSource : nestedSources){
+                                qualifiedProperty = new Property();
+                                qualifiedProperty.setSource(nestedSource);
+                                qualifiedProperty.setScope(nestedAlias);
+                                qualifiedProperty.setResultType(elm.getResultType());
+                                qualifiedProperty.setResultTypeName(elm.getResultTypeName());
+                                qualifiedProperty.setResultTypeSpecifier(elm.getResultTypeSpecifier());
+                                qualifiedProperty.setLocalId(functionRef.function.getLocalId());
+                                qualifiedProperty.setPath(elm.getPath());
+                                context.reportProperty(qualifiedProperty);
+                            }
+                        }
+                    }
+                }
+            }
+            if (qualifiedProperty != null){
+                return context.reportProperty(qualifiedProperty);
+            }
         }
 
         ElmPropertyRequirement propertyRequirement = context.reportProperty(elm);
         ElmRequirement result = aggregateResult(propertyRequirement, visitResult);
         return result;
+    }
+
+    private ElmFunctionRefContext findParentFunctionRefContext(String alias, String parentFunctionName, ElmRequirementsContext context){
+        for (ElmFunctionRefContext functionRef : context.getFunctionReferences()) {
+            if (functionRef.getFunction().getName().equals(parentFunctionName)){
+                return functionRef;
+            }
+        }
+        return null;
+    }
+
+    private Set<Expression> findNestedSources(ExpressionDef parentFunction, String nestedAlias, ElmRequirementsContext context, ElmFunctionRefContext ogFunctionRef){
+        Set<Expression> nestedSources = new HashSet<Expression>();
+        for (ElmFunctionRefContext functionRef : context.getFunctionReferences()) {
+            if (functionRef.function.getName().equals(parentFunction.getName())){
+                if (functionRef.function.getOperand().get(0) instanceof AliasRef){
+                    if (functionRef.localAlias.equals(nestedAlias)){
+                        ogFunctionRef.setQueryContext(functionRef.getQueryContext());
+                    }
+                    nestedSources.add(functionRef.getExpressionContext().getExpressionDef().getExpression());
+                } else {
+                    findNestedSources(functionRef.getExpressionContext().getExpressionDef(), nestedAlias, context, ogFunctionRef);
+                }
+            }
+        }
+        return nestedSources;
+    }
+
+    private Set<String> findNestedAliases(ExpressionDef parentFunction, ElmRequirementsContext context, ElmFunctionRefContext ogFunctionRef){
+        Set<String> nestedAliases = new HashSet<String>();
+        for (ElmFunctionRefContext functionRef : context.getFunctionReferences()) {
+            if (functionRef.function.getName().equals(parentFunction.getName())){
+                if (functionRef.function.getOperand().get(0) instanceof AliasRef){
+                    AliasRef sourceAlias = (AliasRef)functionRef.function.getOperand().get(0);
+                    nestedAliases.add(sourceAlias.getName());
+                } else {
+                    findNestedAlias(functionRef.getExpressionContext().getExpressionDef(), context, ogFunctionRef);
+                }
+            }
+        }
+        return nestedAliases;
+    }
+
+    private String findNestedAlias(ExpressionDef parentFunction, ElmRequirementsContext context, ElmFunctionRefContext ogFunctionRef){
+        for (ElmFunctionRefContext functionRef : context.getFunctionReferences()) {
+            if (functionRef.function.getName().equals(parentFunction.getName())){
+                if (functionRef.function.getOperand().get(0) instanceof AliasRef){
+                    AliasRef sourceAlias = (AliasRef)functionRef.function.getOperand().get(0);
+                    return sourceAlias.getName();
+                } else {
+                    findNestedAlias(functionRef.getExpressionContext().getExpressionDef(), context, ogFunctionRef);
+                }
+            }
+        }
+        return null;
     }
 
     @Override
@@ -1281,7 +1399,7 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
         if (result instanceof ElmOperatorRequirement) {
             context.reportRequirements(result, null);
         }
-        return aliasContext.getRequirements();
+        return aliasContext.getRequirements().get(0);
     }
 
     @Override
@@ -1303,7 +1421,7 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
         finally {
             letContext = context.getCurrentQueryContext().exitLetDefinitionContext(result);
         }
-        return letContext.getRequirements();
+        return letContext.getRequirements().get(0);
     }
 
     @Override

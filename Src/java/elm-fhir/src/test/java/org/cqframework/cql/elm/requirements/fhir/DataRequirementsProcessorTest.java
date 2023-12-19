@@ -1,6 +1,8 @@
 package org.cqframework.cql.elm.requirements.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
+
+import org.checkerframework.checker.index.qual.Positive;
 import org.cqframework.cql.cql2elm.*;
 import org.cqframework.cql.cql2elm.model.CompiledLibrary;
 import org.cqframework.cql.cql2elm.quick.FhirLibrarySourceProvider;
@@ -11,7 +13,12 @@ import org.hl7.fhir.r5.model.*;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.URLDecoder;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -97,6 +104,139 @@ public class DataRequirementsProcessorTest {
         }
 
         return null;
+    }
+
+    @Test
+    public void TestDeviceOrder() throws IOException {
+        CqlCompilerOptions compilerOptions = CqlCompilerOptions.defaultOptions();
+        var manager = setupDataRequirementsGather("DeviceOrder/TestDeviceOrder.cql", compilerOptions);
+        org.hl7.fhir.r5.model.Library moduleDefinitionLibrary = getModuleDefinitionLibrary(manager, compilerOptions, new HashMap<String, Object>(), ZonedDateTime.of(2023, 1, 16, 0, 0, 0, 0, ZoneId.of("UTC")), true);
+        assertNotNull(moduleDefinitionLibrary);
+        assertEqualToExpectedModuleDefinitionLibrary(moduleDefinitionLibrary, "DeviceOrder/Library-TestDeviceOrder-EffectiveDataRequirements.json");
+        //outputModuleDefinitionLibrary(moduleDefinitionLibrary);
+
+        List<Extension> logicDefinitions = moduleDefinitionLibrary.getExtensionsByUrl("http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-logicDefinition");
+        assertTrue(logicDefinitions != null);
+        assertTrue(logicDefinitions.size() > 0);
+        Extension logicDefinition = getLogicDefinitionByName(logicDefinitions, "TestDeviceOrder", "isDeviceOrder");
+        assertTrue(logicDefinition != null);
+    }
+
+    @Test
+    public void TestDavesDataRequirementsProcessor() {
+        CqlCompilerOptions cqlTranslatorOptions = CqlCompilerOptions.defaultOptions();
+        cqlTranslatorOptions.setCollapseDataRequirements(true);
+        cqlTranslatorOptions.setAnalyzeDataRequirements(true);
+        String fileName = "CMS69";
+        String folderName = "DavesTestCases/Draft/CMS69/";
+        String absolutePath = System.getProperty("user.dir") + "/src/test/resources/org/cqframework/cql/elm/requirements/fhir/" + folderName + fileName;
+        String libraryPath = folderName + fileName + "FHIR.json";
+        try {
+            NamespaceInfo ni = new NamespaceInfo("fhir.cdc.opioid-cds", "http://fhir.org/guides/cdc/opioid-cds");
+            FileWriter fileWriter = new FileWriter(absolutePath + ".txt");
+            PrintWriter printWriter = new PrintWriter(fileWriter);
+            var setup = setup(ni, folderName + fileName + ".cql", cqlTranslatorOptions);
+
+            DataRequirementsProcessor dqReqTrans = new DataRequirementsProcessor();
+            Set<String> expressions = new HashSet<String>();
+            for (ExpressionDef expression : setup.library.getLibrary().getStatements().getDef()) {
+                //System.out.println(expression.getName());
+                //printWriter.println(expression.getName());
+                expressions.add(expression.getName());
+            }
+            //expressions.add("PregnancyTest");
+            //expressions.add("SDE Race");
+            //expressions.add("Qualifying Encounter during Day of Measurement Period");
+
+            org.hl7.fhir.r5.model.Library moduleDefinitionLibrary = dqReqTrans.gatherDataRequirements(setup.manager(), setup.library(), cqlTranslatorOptions, expressions, true, true);
+            assertNotNull(moduleDefinitionLibrary);
+
+            FileWriter libraryWriter = new FileWriter(absolutePath + ".json");
+            PrintWriter libraryPrintWriter = new PrintWriter(libraryWriter);
+            FhirContext ctx = FhirContext.forR5();
+            IParser parser = ctx.newJsonParser();
+            String serialized = parser.encodeResourceToString(moduleDefinitionLibrary);
+            libraryPrintWriter.println(serialized);
+            libraryPrintWriter.close();
+
+            org.hl7.fhir.r5.model.Bundle ogBundle = (org.hl7.fhir.r5.model.Bundle)parser.parseResource(DataRequirementsProcessorTest.class.getResourceAsStream(libraryPath));
+            String measureName = "";
+            for (Bundle.BundleEntryComponent bec : ogBundle.getEntry()){
+                if (bec.getResource().getResourceType().name().equals("Measure")){
+                    org.hl7.fhir.r5.model.Measure mes = (org.hl7.fhir.r5.model.Measure)bec.getResource(); 
+                    measureName = mes.getName();
+                }
+            }
+            for (Bundle.BundleEntryComponent bec : ogBundle.getEntry()){
+                if (bec.getResource().getResourceType().name().equals("Library")){
+                    org.hl7.fhir.r5.model.Library lib = (org.hl7.fhir.r5.model.Library)bec.getResource();
+                    if (lib.getName().equals(measureName)){
+                        lib.setDataRequirement(moduleDefinitionLibrary.getDataRequirement());
+                    }
+                }
+            }
+            
+            org.hl7.fhir.r5.model.Bundle myBundle = new org.hl7.fhir.r5.model.Bundle();
+            org.hl7.fhir.r5.model.Measure myMeasure = new org.hl7.fhir.r5.model.Measure();
+            List<CanonicalType> libraryCT = new ArrayList<CanonicalType>();
+            libraryCT.add(new CanonicalType("https://madie.cms.gov/Library/" + fileName));
+            myMeasure.setLibrary(libraryCT);
+            myMeasure.setName(fileName);
+            myMeasure.setId(fileName);
+
+
+            moduleDefinitionLibrary.setName(fileName);
+            moduleDefinitionLibrary.setId(fileName);
+            moduleDefinitionLibrary.setUrl("https://madie.cms.gov/Library/" + fileName);
+
+            org.hl7.fhir.r5.model.Bundle.BundleEntryComponent libraryEntry = new org.hl7.fhir.r5.model.Bundle.BundleEntryComponent();
+            org.hl7.fhir.r5.model.Bundle.BundleEntryComponent measureEntry = new org.hl7.fhir.r5.model.Bundle.BundleEntryComponent();
+            measureEntry.setResource(myMeasure);
+            measureEntry.setFullUrl("https://madie.cms.gov/Measure/" + fileName);
+            libraryEntry.setResource(moduleDefinitionLibrary);
+            libraryEntry.setFullUrl("https://madie.cms.gov/Library/" + fileName);
+            myBundle.addEntry(measureEntry);
+            myBundle.addEntry(libraryEntry);
+            FileWriter bundleWriter = new FileWriter(absolutePath + "_bundle" + ".json");
+            PrintWriter bundlePrintWriter = new PrintWriter(bundleWriter);
+            String serializedBundle = parser.encodeResourceToString(ogBundle);
+            bundlePrintWriter.println(serializedBundle);
+            bundlePrintWriter.close();
+
+            Integer index = 1;
+            for (DataRequirement dr : moduleDefinitionLibrary.getDataRequirement()) {
+                String profileName = "";
+                String code_values = "";
+                String mustSupports = "";
+                for (CanonicalType ct : dr.getProfile()) {
+                    //System.out.println(ct.asStringValue());
+                    //printWriter.println(ct.asStringValue());
+                    profileName = ct.asStringValue();
+                }
+                for (DataRequirement.DataRequirementCodeFilterComponent codeFilter : dr.getCodeFilter()){
+                    if (codeFilter.getValueSet() != null){
+                        //System.out.println(codeFilter.getValueSet());
+                        //printWriter.println(index + "|" + profileName + "|" + codeFilter.getValueSet());
+                        code_values += codeFilter.getValueSet() + " ";
+                    }
+                    for (Coding code : codeFilter.getCode()){
+                        //System.out.println(code.getCode());
+                        //printWriter.println(index + "|" + profileName + "|" + code.getCode());
+                        code_values += code.getCode() + " ";
+                    }
+                }
+                for (StringType mustSupport : dr.getMustSupport()){
+                    //System.out.println(mustSupport);
+                    //printWriter.println(index + "|" + profileName + "|" + mustSupport);
+                    mustSupports += mustSupport + " ";
+                }
+                printWriter.println(index + "|" + profileName + "|" + code_values + "|" + mustSupports);
+                index += 1;
+            }
+            printWriter.close();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
     }
 
     @Test
@@ -1865,22 +2005,6 @@ public class DataRequirementsProcessorTest {
             }
         }
         return null;
-    }
-
-    @Test
-    public void TestDeviceOrder() throws IOException {
-        CqlCompilerOptions compilerOptions = CqlCompilerOptions.defaultOptions();
-        var manager = setupDataRequirementsGather("DeviceOrder/TestDeviceOrder.cql", compilerOptions);
-        org.hl7.fhir.r5.model.Library moduleDefinitionLibrary = getModuleDefinitionLibrary(manager, compilerOptions, new HashMap<String, Object>(), ZonedDateTime.of(2023, 1, 16, 0, 0, 0, 0, ZoneId.of("UTC")), true);
-        assertNotNull(moduleDefinitionLibrary);
-        assertEqualToExpectedModuleDefinitionLibrary(moduleDefinitionLibrary, "DeviceOrder/Library-TestDeviceOrder-EffectiveDataRequirements.json");
-        //outputModuleDefinitionLibrary(moduleDefinitionLibrary);
-
-        List<Extension> logicDefinitions = moduleDefinitionLibrary.getExtensionsByUrl("http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-logicDefinition");
-        assertTrue(logicDefinitions != null);
-        assertTrue(logicDefinitions.size() > 0);
-        Extension logicDefinition = getLogicDefinitionByName(logicDefinitions, "TestDeviceOrder", "isDeviceOrder");
-        assertTrue(logicDefinition != null);
     }
 
     @Test

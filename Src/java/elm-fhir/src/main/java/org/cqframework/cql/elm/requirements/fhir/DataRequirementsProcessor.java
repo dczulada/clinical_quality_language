@@ -22,6 +22,7 @@ import org.hl7.fhir.r5.model.Library;
 import org.hl7.fhir.r5.model.Enumerations.FHIRTypes;
 import org.hl7.fhir.utilities.validation.ValidationMessage;
 import org.cqframework.cql.elm.requirements.ElmDataRequirement;
+import org.cqframework.cql.elm.requirements.ElmFunctionRefContext;
 import org.cqframework.cql.elm.requirements.ElmPertinenceContext;
 import org.cqframework.cql.elm.requirements.ElmRequirement;
 import org.cqframework.cql.elm.requirements.ElmRequirements;
@@ -119,14 +120,21 @@ public class DataRequirementsProcessor {
                         expressionDefs.add(ed);
                         visitor.visitElement(ed, context);
                     }
-                    else {
-                        // If the expression is the name of any functions, include those in the gather
-                        // TODO: Provide a mechanism to specify a function def (need signature)
-                        Iterable<FunctionDef> fds = translatedLibrary.resolveFunctionRef(expression);
-                        for (FunctionDef fd : fds) {
-                            expressionDefs.add(fd);
-                            visitor.visitElement(fd, context);
-                        }
+                }
+                for (String expression : expressions) {
+                    // If the expression is the name of any functions, include those in the gather
+                    // TODO: Provide a mechanism to specify a function def (need signature)
+                    Iterable<FunctionDef> fds = translatedLibrary.resolveFunctionRef(expression);
+                    for (FunctionDef fd : fds) {
+                        expressionDefs.add(fd);
+                        visitor.visitElement(fd, context);
+                    }
+                }
+                List<Element> previouslyVisitedElements = new ArrayList<Element>(context.getVisited());
+                for (int i = 0; i < previouslyVisitedElements.size(); i++){
+                    Element previouslyVisitedElement = previouslyVisitedElements.get(i);
+                    if (previouslyVisitedElement instanceof FunctionDef){
+                        visitor.visitElement(previouslyVisitedElement, context);
                     }
                 }
             }
@@ -229,21 +237,27 @@ public class DataRequirementsProcessor {
                         if (extensionFilterElement != null && extensionFilterComponent != null) {
                             String extensionName = extensionFilterComponent.getCodeFirstRep().getCode();
                             int tailIndex = extensionName.lastIndexOf("/");
-                            if (tailIndex > 0) {
-                                extensionName = extensionName.substring(tailIndex + 1);
-                            }
-                            if (extensionName.startsWith("us-core-")) {
-                                extensionName = extensionName.substring(8);
-                            }
-                            if (extensionName.startsWith("qicore-")) {
-                                extensionName = extensionName.substring(7);
-                            }
+                            // if (tailIndex > 0) {
+                            //     extensionName = extensionName.substring(tailIndex + 1);
+                            // }
+                            // if (extensionName.startsWith("us-core-")) {
+                            //     extensionName = extensionName.substring(8);
+                            // }
+                            // if (extensionName.startsWith("qicore-")) {
+                            //     extensionName = extensionName.substring(7);
+                            // }
                             r.getCodeFilter().remove(extensionFilterElement);
                             dataRequirement.removeProperty(urlProperty);
                             if (extensionProperty != null) {
                                 dataRequirement.removeProperty(extensionProperty);
                             }
-                            dataRequirement.addProperty(new Property().withPath(extensionName));
+                            dataRequirement.addProperty(new Property().withPath("extension('" + extensionName + "')"));
+                        }
+                    }
+                    if (r.getDataType() == null){
+                        dataRequirement.removeProperty(urlProperty);
+                        if (extensionProperty != null) {
+                            dataRequirement.removeProperty(extensionProperty);
                         }
                     }
                 }

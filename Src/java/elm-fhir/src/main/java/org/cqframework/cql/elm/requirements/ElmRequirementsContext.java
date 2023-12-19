@@ -217,6 +217,17 @@ public class ElmRequirementsContext {
     }
 
     private Set<Element> visited = new LinkedHashSet<Element>();
+    public Set<Element> getVisited() {
+        return visited;
+    }
+
+    private Set<ElmFunctionRefContext> functionReferences = new LinkedHashSet<ElmFunctionRefContext>();
+    public Set<ElmFunctionRefContext> getFunctionReferences() {
+        return functionReferences;
+    }
+    public void addFunctionReference(ElmFunctionRefContext element) {
+        functionReferences.add(element);
+    }    
 
     private ElmRequirements requirements;
     public ElmRequirements getRequirements() {
@@ -540,20 +551,44 @@ public class ElmRequirementsContext {
         // if source is a LetRef, it's a reference to a let in a current query context
         // if source is a Property, add the current property to a qualifier
         // Otherwise, report it as an unbound property reference to the type of source
-        if (property.getScope() != null || property.getSource() instanceof AliasRef) {
-            String aliasName = property.getScope() != null ? property.getScope() : ((AliasRef)property.getSource()).getName();
-            ElmQueryAliasContext aliasContext = getCurrentQueryContext().resolveAlias(aliasName);
-            boolean inCurrentScope = true;
-            if (aliasContext == null) {
-                // This is a reference to an alias in an outer scope
-                aliasContext = resolveAlias(aliasName);
-                inCurrentScope = false;
-            }
-            ElmPropertyRequirement propertyRequirement = new ElmPropertyRequirement(getCurrentLibraryIdentifier(),
-                    property, aliasContext.getQuerySource(), inCurrentScope);
 
-            aliasContext.reportProperty(propertyRequirement);
-            return propertyRequirement;
+        if (property.getScope() != null && property.getSource() instanceof Query) {
+            ElmExpressionDefContext currentContext = getCurrentExpressionDefContext();
+
+            for (ElmFunctionRefContext functionRef : this.getFunctionReferences()) {
+                if (functionRef.function.getName().equals(currentContext.getExpressionDef().getName())){
+                    ElmPropertyRequirement propertyRequirement = new ElmPropertyRequirement(getCurrentLibraryIdentifier(),
+                    property, property.getSource(), true);
+                    ElmExpressionDefContext ctx = functionRef.expressionContext;
+                    if (!property.getScope().equals("$this") || property.getPath().equals("url") || property.getPath().equals("extension")){
+                        if (functionRef.queryContext != null ){
+                            ElmQueryAliasContext aliasContext = functionRef.queryContext.resolveAlias(property.getScope());
+                            //currentContext.setRequirements(currentContext.getReportedRequirements());
+                            if (aliasContext != null){
+                                aliasContext.reportProperty(propertyRequirement);
+                                return propertyRequirement;
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (property.getScope() != null || property.getSource() instanceof AliasRef) {
+            String aliasName = property.getScope() != null ? property.getScope() : ((AliasRef)property.getSource()).getName();
+            if (getCurrentExpressionDefContext().inQueryContext()){
+                ElmQueryAliasContext aliasContext = getCurrentQueryContext().resolveAlias(aliasName);
+                boolean inCurrentScope = true;
+                if (aliasContext == null) {
+                    aliasContext = resolveAlias(aliasName);
+                    inCurrentScope = false;
+                }
+                ElmPropertyRequirement propertyRequirement = new ElmPropertyRequirement(getCurrentLibraryIdentifier(),
+                        property, aliasContext.getQuerySource(), inCurrentScope);
+
+                if (!aliasName.equals("$this") || property.getPath().equals("url") || property.getPath().equals("extension")){
+                    aliasContext.reportProperty(propertyRequirement);
+                    return propertyRequirement;
+                }
+            }
         }
 
         if (property.getSource() instanceof QueryLetRef) {
@@ -575,6 +610,7 @@ public class ElmRequirementsContext {
         if (property.getSource() instanceof Property) {
             Property sourceProperty = (Property)property.getSource();
             Property qualifiedProperty = new Property();
+            if (!property.getPath().equals("value")){
             qualifiedProperty.setSource(sourceProperty.getSource());
             qualifiedProperty.setScope(sourceProperty.getScope());
             qualifiedProperty.setResultType(property.getResultType());
@@ -583,6 +619,7 @@ public class ElmRequirementsContext {
             qualifiedProperty.setLocalId(sourceProperty.getLocalId());
             qualifiedProperty.setPath(sourceProperty.getPath() + "." + property.getPath());
             return reportProperty(qualifiedProperty);
+            }
         }
         else {
             QName typeName = getType(property.getSource());

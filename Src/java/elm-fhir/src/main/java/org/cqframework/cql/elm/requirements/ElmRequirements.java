@@ -1,10 +1,17 @@
 package org.cqframework.cql.elm.requirements;
 
+import java.lang.reflect.Field;
 import org.hl7.elm.r1.*;
+import org.hl7.fhir.r4.model.ServiceRequest;
+import org.hl7.fhir.r5.model.UriType;
+import org.hl7.fhir.r4.model.Type;
 
+import java.net.URISyntaxException;
+import java.net.URI;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toList;
 public class ElmRequirements extends ElmRequirement {
@@ -336,6 +343,51 @@ public class ElmRequirements extends ElmRequirement {
             }
         }
 
+        for (ElmRequirement requirement : result.getRequirements()){
+            if (requirement instanceof ElmDataRequirement) {
+                ElmDataRequirement dataRequirement = (ElmDataRequirement)requirement;
+                if (dataRequirement.hasProperties()) {
+                    List<Property> propertiesToRemove = new ArrayList<Property>();
+                    for (Property p : dataRequirement.getProperties()) {
+                        Retrieve de = dataRequirement.getElement();
+
+                        List<CodeFilterElement> codeFiltersToRemove = new ArrayList<CodeFilterElement>();
+                        for (CodeFilterElement cfe : de.getCodeFilter()){
+                            if (cfe.getProperty().equals("url")){
+                                codeFiltersToRemove.add(cfe);
+                            }
+                        }
+                        for (CodeFilterElement ctr : codeFiltersToRemove){
+                            de.getCodeFilter().remove(ctr);
+                        }
+                        if (dataRequirement.getElement().getDataType() != null){
+                            try {
+                                Field what = Class.forName("org.hl7.fhir.r4.model." + dataRequirement.getElement().getDataType().getLocalPart()).getDeclaredField(p.getPath());
+                            }
+                            catch (NoSuchFieldException e){
+                                // Don't remove if the path is a url, this is an extension
+                                if (!p.getPath().contains("http://")){
+                                    if (p.getPath().contains(".")){
+                                        String subString = p.getPath().split(Pattern.quote("."))[1];
+                                        if (subString.equals("reference")){
+                                            propertiesToRemove.add(p);
+                                        }
+                                    } else {
+                                        propertiesToRemove.add(p);
+                                    }
+                                }
+                            }
+                            catch (ClassNotFoundException e){
+                                System.out.println(e);
+                            }
+                        }
+                    }
+                    for (Property pro : propertiesToRemove){
+                        dataRequirement.removeProperty(pro);
+                    }
+                }
+            }
+        }
         return result;
     }
 }

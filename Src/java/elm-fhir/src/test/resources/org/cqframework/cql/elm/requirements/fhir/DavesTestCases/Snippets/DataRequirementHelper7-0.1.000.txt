@@ -1,0 +1,2 @@
+1|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient||
+2|http://hl7.org/fhir/StructureDefinition/bmi||value status status.value 

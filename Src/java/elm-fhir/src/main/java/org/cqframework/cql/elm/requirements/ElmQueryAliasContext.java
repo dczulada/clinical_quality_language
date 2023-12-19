@@ -1,5 +1,10 @@
 package org.cqframework.cql.elm.requirements;
 
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.ArrayList;
+
 import org.hl7.elm.r1.AliasedQuerySource;
 import org.hl7.elm.r1.Property;
 import org.hl7.elm.r1.Retrieve;
@@ -26,25 +31,43 @@ public class ElmQueryAliasContext {
         return querySource.getAlias();
     }
 
-    private ElmDataRequirement requirements;
-    public ElmDataRequirement getRequirements() {
+    private List<ElmDataRequirement> requirements = new ArrayList<ElmDataRequirement>();
+    public List<ElmDataRequirement> getRequirements() {
         return requirements;
     }
+    public void reportRequirement(ElmDataRequirement requirement) {
+        requirements.add(requirement);
+    }
+
     public void setRequirements(ElmRequirement requirements) {
         if (requirements instanceof ElmDataRequirement) {
-            this.requirements = (ElmDataRequirement)requirements;
+            this.reportRequirement((ElmDataRequirement)requirements);
         }
         else if (requirements instanceof ElmExpressionRequirement) {
-            this.requirements = ElmDataRequirement.inferFrom((ElmExpressionRequirement)requirements);
+            for (ElmDataRequirement requirement : ElmDataRequirement.inferFrom((ElmExpressionRequirement)requirements)){
+                this.reportRequirement(requirement);
+            }
+            if (requirements instanceof ElmOperatorRequirement){
+                ElmOperatorRequirement elmOp = (ElmOperatorRequirement)requirements;
+                for (ElmRequirement requirement :  elmOp.getRequirements()){
+                    if (requirement instanceof ElmDataRequirement){
+                        this.reportRequirement((ElmDataRequirement)requirement);
+                    }
+                }
+            }
         }
         else {
             // Should never land here, but defensively...
-            this.requirements = new ElmDataRequirement(this.libraryIdentifier, new Retrieve());
+            this.reportRequirement(new ElmDataRequirement(this.libraryIdentifier, new Retrieve()));
         }
-        this.requirements.setQuerySource(getQuerySource());
+        for (ElmDataRequirement requirement : this.getRequirements()){
+            requirement.setQuerySource(getQuerySource());
+        }
     }
 
     public void reportProperty(ElmPropertyRequirement propertyRequirement) {
-        requirements.reportProperty(propertyRequirement);
+        for (ElmDataRequirement requirement : this.getRequirements()){
+            requirement.reportProperty(propertyRequirement);
+        }
     }
 }

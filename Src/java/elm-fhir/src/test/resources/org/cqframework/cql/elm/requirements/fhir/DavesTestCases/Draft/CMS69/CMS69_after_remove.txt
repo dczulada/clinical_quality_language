@@ -1,0 +1,36 @@
+1|http://hl7.org/fhir/StructureDefinition/bmi||value status effective 
+2|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient|text |
+3|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient||
+4|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient|ombCategory text |
+5|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-medication||
+6|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-medication||
+7|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-medicationrequest|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.526.3.1562 |medication 
+8|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-medicationrequest||
+9|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-medicationrequest|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.526.3.1561 |medication 
+10|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-servicerequest|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1528 |code status intent 
+11|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-servicerequest|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1525 |code status intent 
+12|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-servicerequest|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1527 |code status intent 
+13|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-servicerequest|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.526.3.1584 |code authoredOn status intent 
+14|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-condition|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.526.3.1563 |code category clinicalStatus onset 
+15|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-condition|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1623 |code clinicalStatus onset abatement 
+16|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-condition|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113762.1.4.1047.502 |code category clinicalStatus onset 
+17|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-condition|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.464.1003.1165 |code abatement 
+18|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-condition|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.464.1003.1167 |code abatement 
+19|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-procedure|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1528 |code reasonCode status performed 
+20|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-procedure|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1525 |code reasonCode status performed 
+21|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-procedure|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.526.3.1584 |code performed status 
+22|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-procedure|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.464.1003.198.12.1135 |code performed status 
+23|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-encounter|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1751 finished |type period status 
+24|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-encounter|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.666.5.307 |type hospitalization period status 
+25|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-encounter|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.464.1003.1003 |type period status 
+26|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-encounter|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.464.1003.101.12.1090 |type period status 
+27|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-encounter|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1751 finished |type period status 
+28|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-servicenotrequested|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1527 |code authoredOn status 
+29|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-servicenotrequested|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1525 |code authoredOn status 
+30|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-servicenotrequested|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.600.1.1528 |code authoredOn status 
+31|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-mednotrequested|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.526.3.1561 |medication authoredOn status reasonCode 
+32|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-mednotrequested|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.526.3.1562 |medication authoredOn status reasonCode 
+33|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-observationnotdone|39156-5 |code effective status 
+34|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-coverage|http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.114222.4.11.3591 |type period 
+35|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-observation|45755-6 |code value effective status category 
+36|http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-observation|71007-9 |code effective status category 

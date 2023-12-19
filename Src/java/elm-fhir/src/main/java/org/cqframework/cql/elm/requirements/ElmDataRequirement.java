@@ -6,9 +6,11 @@ import org.hl7.cql.model.ListType;
 import org.hl7.cql.model.SearchType;
 import org.hl7.elm.r1.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.List;
 
 public class ElmDataRequirement extends ElmExpressionRequirement {
     public ElmDataRequirement(VersionedIdentifier libraryIdentifier, Retrieve element) {
@@ -105,14 +107,25 @@ public class ElmDataRequirement extends ElmExpressionRequirement {
         return new ElmDataRequirement(requirement.libraryIdentifier, getRetrieve(requirement.getQuery()));
     }
 
-    public static ElmDataRequirement inferFrom(ElmExpressionRequirement requirement) {
+    public static List<ElmDataRequirement> inferFrom(ElmExpressionRequirement requirement) {
+        List<ElmDataRequirement> requirementList = new ArrayList<ElmDataRequirement>();
         if (requirement instanceof ElmDataRequirement) {
-            return inferFrom((ElmDataRequirement)requirement);
+            requirementList.add(inferFrom((ElmDataRequirement)requirement));
         }
         if (requirement instanceof ElmQueryRequirement) {
-            return inferFrom((ElmQueryRequirement)requirement);
+            requirementList.add(inferFrom((ElmQueryRequirement)requirement));
         }
-        return new ElmDataRequirement(requirement.libraryIdentifier, getRetrieve(requirement.getExpression()));
+        if (requirement instanceof ElmOperatorRequirement) {
+            for (ElmRequirement ex : ((ElmOperatorRequirement)requirement).getRequirements()) {
+                if (ex instanceof ElmQueryRequirement) {
+                    requirementList.add(inferFrom((ElmQueryRequirement)ex));
+                }
+            }
+        }
+        if (!(requirement instanceof ElmDataRequirement)) {
+            requirementList.add(new ElmDataRequirement(requirement.libraryIdentifier, getRetrieve(requirement.getExpression())));
+        }
+        return requirementList;
     }
 
     // This is an "inferred" retrieve but from an expression context and so can't be unambiguously tied to the
@@ -206,6 +219,14 @@ public class ElmDataRequirement extends ElmExpressionRequirement {
             // Build the left-hand as a Property (or Search) against the alias
             // The right-hand is the date range
             // The comparator is always during (i.e. X >= start and X <= end)
+        }
+    }
+
+    private void applyConditionRequirementToList(ElmConditionRequirement conditionRequirement, Retrieve retrieve, ElmRequirementsContext context, ElmQueryRequirement queryRequirements) {
+        for (ElmDataRequirement edr : queryRequirements.getDataRequirements()){
+            if (retrieve.getDataType() != null && (retrieve.getDataType().equals(edr.getRetrieve().getDataType()))){
+                applyConditionRequirementTo((ElmConditionRequirement)conditionRequirement, edr.getRetrieve(), context);
+            }
         }
     }
 
@@ -419,7 +440,7 @@ public class ElmDataRequirement extends ElmExpressionRequirement {
         // apply to the retrieve
         for (ElmExpressionRequirement conditionRequirement : getConjunctiveRequirement().getArguments()) {
             if (conditionRequirement instanceof ElmConditionRequirement) {
-                applyConditionRequirementTo((ElmConditionRequirement)conditionRequirement, retrieve, context);
+                applyConditionRequirementToList((ElmConditionRequirement)conditionRequirement, retrieve, context, queryRequirements);
             }
             else if (conditionRequirement instanceof ElmJoinRequirement) {
                 applyJoinRequirementTo(((ElmJoinRequirement)conditionRequirement), retrieve, context, queryRequirements);

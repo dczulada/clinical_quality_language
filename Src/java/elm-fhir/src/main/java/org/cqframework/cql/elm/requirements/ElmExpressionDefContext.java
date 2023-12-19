@@ -52,6 +52,14 @@ public class ElmExpressionDefContext {
             throw new IllegalArgumentException("Not in a query context");
         }
 
+        if (queryStack.size() >1 && queryStack.peek().hasThisAlias()) {
+            ElmQueryContext putMeBack = queryStack.pop();
+            ElmQueryContext currentContext = queryStack.peek();
+            queryStack.push(putMeBack);
+            if (currentContext.hasAliasContext()){
+                return currentContext;
+            }
+        }
         return queryStack.peek();
     }
     public boolean inQueryContext() {
