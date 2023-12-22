@@ -10,6 +10,7 @@ import org.hl7.cql.model.NamespaceInfo;
 import org.hl7.elm.r1.*;
 import ca.uhn.fhir.parser.IParser;
 import org.hl7.fhir.r5.model.*;
+import org.hl7.fhir.r5.model.Library;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -165,6 +166,12 @@ public class DataRequirementsProcessorTest {
                 if (bec.getResource().getResourceType().name().equals("Measure")){
                     org.hl7.fhir.r5.model.Measure mes = (org.hl7.fhir.r5.model.Measure)bec.getResource(); 
                     measureName = mes.getName();
+                    for (Resource contained : mes.getContained()){
+                        if (contained.getId().equals("#effective-data-requirements")){
+                            org.hl7.fhir.r5.model.Library containedLibrary = (org.hl7.fhir.r5.model.Library)contained;
+                            containedLibrary.setDataRequirement((moduleDefinitionLibrary.getDataRequirement());
+                        }
+                    }
                 }
             }
             for (Bundle.BundleEntryComponent bec : ogBundle.getEntry()){

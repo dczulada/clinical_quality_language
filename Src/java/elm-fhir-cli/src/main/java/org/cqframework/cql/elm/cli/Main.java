@@ -116,6 +116,15 @@ public class Main {
                     ogLib.setDataRequirement(moduleDefinitionLibrary.getDataRequirement());
                 }
             }
+            if (bec.getResource().getResourceType().name().equals("Measure")){
+                org.hl7.fhir.r5.model.Measure mes = (org.hl7.fhir.r5.model.Measure)bec.getResource();
+                for (org.hl7.fhir.r5.model.Resource contained : mes.getContained()){
+                    if (contained.getId().equals("#effective-data-requirements")){
+                        org.hl7.fhir.r5.model.Library containedLibrary = (org.hl7.fhir.r5.model.Library)contained;
+                        containedLibrary.setDataRequirement(moduleDefinitionLibrary.getDataRequirement());
+                    }
+                }
+            }
         }
         FileWriter bundleWriter = new FileWriter(file.getPath() + "/" + measureName + "_rebundled" + ".json");
         PrintWriter bundlePrintWriter = new PrintWriter(bundleWriter);
