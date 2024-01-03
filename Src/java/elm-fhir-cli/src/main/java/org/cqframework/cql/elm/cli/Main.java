@@ -44,11 +44,20 @@ public class Main {
     // ./gradlew :elm-fhir-cli:run --args="/Users/dczulada/Desktop/Code/USCDI/SampleMeasures/CMS2" 
     @SuppressWarnings({ "unchecked", "rawtypes"})
     public static void main(String[] args) throws IOException {
-        File file = new File(args[0]);
-        //File file = new File("/Users/dczulada/Desktop/Code/USCDI/SampleMeasures/CMS2");
-        //String cqlPath = "/Users/dczulada/Desktop/Code/USCDI/SampleMeasures/CMS2" + "/cql";
-        String cqlPath = args[0] + "/cql";
+        //File file = new File(args[0]);
+        //String cqlPath = args[0] + "/cql";
+        List<String> cmsids = Collections.EMPTY_LIST;
+        Collections.addAll(cmsids = new ArrayList<String>(), "2", "22","50","56","68","69","71","72","74","75","90","104","108","122","124","129","130","131","133","135","136","138","142","143","144","145","149","153","154","157","159","165","177","190","249","314","347","349","506","529","645","646","771","816","819","826","844","951","986","1028","1056","1074","1157","1188","1206");
+        //144, 145, 190, 645, 646, 1028, 1056
+        //Collections.addAll(cmsids = new ArrayList<String>(),"144","145","190","645","646","1028","1056");
+        //Collections.addAll(cmsids = new ArrayList<String>(),"145");
+        for (String cmsid : cmsids){
+        System.out.println(cmsid);
+        File file = new File("/Users/dczulada/Desktop/Code/USCDI/SampleMeasures/CMS" + cmsid);
+        String cqlPath = "/Users/dczulada/Desktop/Code/USCDI/SampleMeasures/CMS" + cmsid + "/cql";
+        
         String measureName = "";
+        String measureShortName = "";
         String measureVersion = "";
         String measureCqlFilePath = "";
         Path path = file.toPath();
@@ -79,6 +88,11 @@ public class Main {
             if (bec.getResource().getResourceType().name().equals("Measure")){
                 org.hl7.fhir.r5.model.Measure mes = (org.hl7.fhir.r5.model.Measure)bec.getResource();
                 measureName = mes.getName();
+                for (org.hl7.fhir.r5.model.Identifier mesId : mes.getIdentifier()){
+                    if (mesId.getSystem().equals("https://madie.cms.gov/measure/shortName")){
+                        measureShortName = mesId.getValue();
+                    }
+                }
                 measureVersion = mes.getVersion();
                 measureCqlFilePath = cqlPath + "/" + measureName + "-" + measureVersion + ".cql";
             }
@@ -106,6 +120,7 @@ public class Main {
         for (ExpressionDef expression : library.getLibrary().getStatements().getDef()) {
             expressions.add(expression.getName());
         }
+        //expressions.add("Initial Population");
 
         DataRequirementsProcessor dqReqTrans = new DataRequirementsProcessor();
         org.hl7.fhir.r5.model.Library moduleDefinitionLibrary = dqReqTrans.gatherDataRequirements(manager, library, cqlTranslatorOptions, expressions, true, true);
@@ -126,13 +141,14 @@ public class Main {
                 }
             }
         }
-        FileWriter bundleWriter = new FileWriter(file.getPath() + "/" + measureName + "_rebundled" + ".json");
+        FileWriter bundleWriter = new FileWriter(file.getPath() + "/" + measureShortName + "-v" + measureVersion + "-" + measureName + "_rebundled" + ".json");
         PrintWriter bundlePrintWriter = new PrintWriter(bundleWriter);
         FhirContext ctx = FhirContext.forR5();
         IParser parser = ctx.newJsonParser();
         String serializedBundle = parser.encodeResourceToString(inOutMap.get("Bundle"));
         bundlePrintWriter.println(serializedBundle);
         bundlePrintWriter.close();
+        }
     }
 
 
