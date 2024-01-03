@@ -1262,15 +1262,17 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
                 qualifiedProperty.setResultTypeSpecifier(elm.getResultTypeSpecifier());
                 qualifiedProperty.setLocalId(sourceProperty.getLocalId());
                 qualifiedProperty.setPath(sourceProperty.getPath() + "." + elm.getPath());
-                return context.reportProperty(qualifiedProperty);
+                return context.reportProperty(qualifiedProperty, null);
             }
         }
 
         if (visitResult != null && visitResult.element != null && visitResult.element instanceof OperandRef){
+            ElmQueryContext functionQueryContext = null;
             FunctionDef functionDef = (FunctionDef)context.getCurrentExpressionDefContext().getExpressionDef();
             for (ElmFunctionRefContext functionRef : context.getFunctionReferences()) {
             
                 if (functionRef.function.getName().equals(functionDef.getName())){
+                    // functionQueryContext = functionRef.getQueryContext();
                     if (functionRef.function.getOperand().get(0) instanceof AliasRef){
                         AliasRef sourceAlias = (AliasRef)functionRef.function.getOperand().get(0);
                         qualifiedProperty = new Property();
@@ -1283,9 +1285,9 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
                         qualifiedProperty.setPath(elm.getPath());
                         // TODO: Resolve aliases from nested libraries
                         try{
-                            context.reportProperty(qualifiedProperty);
+                            context.reportProperty(qualifiedProperty, functionRef.getQueryContext());
                         } catch (IllegalArgumentException e){
-
+                            // TODO: This is still being thrown in some instances
                         }
                     } else if (functionRef.getExpressionContext().getExpressionDef() instanceof FunctionDef){
                         // TODO:  This is only here to bypass function operators that are a choice.  This makes it hard to work with nested paths.
@@ -1307,18 +1309,22 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
                                 qualifiedProperty.setResultTypeSpecifier(elm.getResultTypeSpecifier());
                                 qualifiedProperty.setLocalId(functionRef.function.getLocalId());
                                 qualifiedProperty.setPath(elm.getPath());
-                                context.reportProperty(qualifiedProperty);
+                                try{
+                                    context.reportProperty(qualifiedProperty, functionRef.getQueryContext());
+                                } catch (IllegalArgumentException e){
+                                    // TODO: This is still being thrown in some instances
+                                }
                             }
                         }
                     }
                 }
             }
             if (qualifiedProperty != null){
-                return context.reportProperty(qualifiedProperty);
+                // return context.reportProperty(qualifiedProperty, functionQueryContext);
             }
         }
 
-        ElmPropertyRequirement propertyRequirement = context.reportProperty(elm);
+        ElmPropertyRequirement propertyRequirement = context.reportProperty(elm, null);
         ElmRequirement result = aggregateResult(propertyRequirement, visitResult);
         return result;
     }

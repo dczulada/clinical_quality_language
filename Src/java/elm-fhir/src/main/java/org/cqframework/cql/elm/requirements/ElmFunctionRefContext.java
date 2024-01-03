@@ -22,6 +22,8 @@ public class ElmFunctionRefContext {
         if (function.getOperand().get(0) instanceof AliasRef){
             AliasRef alias = (AliasRef)function.getOperand().get(0);
             this.localAlias = alias.getName();
+            // The query context for the alias that is the subject of the function call
+            this.queryContext = expressionDef.getQueryContextForAlias(this.localAlias);
         }
     }
 

@@ -545,7 +545,9 @@ public class ElmRequirementsContext {
         return null;
     }
 
-    public ElmPropertyRequirement reportProperty(Property property) {
+    // The context of the property might not be the current query context (e.g., in function calls).
+    // If a queryContext context is passed in, it will be used.
+    public ElmPropertyRequirement reportProperty(Property property, ElmQueryContext queryContext) {
         // if scope is specified, it's a reference to an alias in a current query context
         // if source is an AliasRef, it's a reference to an alias in a current query context
         // if source is a LetRef, it's a reference to a let in a current query context
@@ -575,7 +577,10 @@ public class ElmRequirementsContext {
         } else if (property.getScope() != null || property.getSource() instanceof AliasRef) {
             String aliasName = property.getScope() != null ? property.getScope() : ((AliasRef)property.getSource()).getName();
             if (getCurrentExpressionDefContext().inQueryContext()){
-                ElmQueryAliasContext aliasContext = getCurrentQueryContext().resolveAlias(aliasName);
+                if (queryContext == null){
+                    queryContext = getCurrentQueryContext();
+                }
+                ElmQueryAliasContext aliasContext = queryContext.resolveAlias(aliasName);
                 boolean inCurrentScope = true;
                 if (aliasContext == null) {
                     aliasContext = resolveAlias(aliasName);
@@ -618,7 +623,7 @@ public class ElmRequirementsContext {
             qualifiedProperty.setResultTypeSpecifier(property.getResultTypeSpecifier());
             qualifiedProperty.setLocalId(sourceProperty.getLocalId());
             qualifiedProperty.setPath(sourceProperty.getPath() + "." + property.getPath());
-            return reportProperty(qualifiedProperty);
+            return reportProperty(qualifiedProperty, null);
             }
         }
         else {

@@ -4,6 +4,7 @@ import org.hl7.elm.r1.ExpressionDef;
 import org.hl7.elm.r1.Query;
 import org.hl7.elm.r1.VersionedIdentifier;
 
+import java.util.Iterator;
 import java.util.Stack;
 
 public class ElmExpressionDefContext {
@@ -61,6 +62,22 @@ public class ElmExpressionDefContext {
             }
         }
         return queryStack.peek();
+    }
+
+    // return a QueryContext for a specific alias (useful for nested queries)
+    public ElmQueryContext getQueryContextForAlias(String alias) {
+        if (queryStack.empty()) {
+            throw new IllegalArgumentException("Not in a query context");
+        }
+        Iterator<ElmQueryContext> queryList = queryStack.iterator();
+        
+        while(queryList.hasNext()) {
+            ElmQueryContext queryCx =  queryList.next();
+            if (queryCx.hasAlias(alias)){
+                return queryCx;
+            }
+        }
+        return null;
     }
     public boolean inQueryContext() {
         return !queryStack.empty();
