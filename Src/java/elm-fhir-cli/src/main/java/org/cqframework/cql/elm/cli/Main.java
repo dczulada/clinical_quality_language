@@ -44,17 +44,8 @@ public class Main {
     // ./gradlew :elm-fhir-cli:run --args="/Users/dczulada/Desktop/Code/USCDI/SampleMeasures/CMS2" 
     @SuppressWarnings({ "unchecked", "rawtypes"})
     public static void main(String[] args) throws IOException {
-        //File file = new File(args[0]);
-        //String cqlPath = args[0] + "/cql";
-        List<String> cmsids = Collections.EMPTY_LIST;
-        Collections.addAll(cmsids = new ArrayList<String>(), "2", "22","50","56","68","69","71","72","74","75","90","104","108","122","124","129","130","131","133","135","136","138","142","143","144","145","149","153","154","157","159","165","177","190","249","314","347","349","506","529","645","646","771","816","819","826","844","951","986","1028","1056","1074","1157","1188","1206");
-        //144, 145, 190, 645, 646, 1028, 1056
-        //Collections.addAll(cmsids = new ArrayList<String>(),"144","145","190","645","646","1028","1056");
-        //Collections.addAll(cmsids = new ArrayList<String>(),"145");
-        for (String cmsid : cmsids){
-        System.out.println(cmsid);
-        File file = new File("/Users/dczulada/Desktop/Code/USCDI/SampleMeasures/CMS" + cmsid);
-        String cqlPath = "/Users/dczulada/Desktop/Code/USCDI/SampleMeasures/CMS" + cmsid + "/cql";
+        File file = new File(args[0]);
+        String cqlPath = args[0] + "/cql";
         
         String measureName = "";
         String measureShortName = "";
@@ -148,7 +139,6 @@ public class Main {
         String serializedBundle = parser.encodeResourceToString(inOutMap.get("Bundle"));
         bundlePrintWriter.println(serializedBundle);
         bundlePrintWriter.close();
-        }
     }
 
 
