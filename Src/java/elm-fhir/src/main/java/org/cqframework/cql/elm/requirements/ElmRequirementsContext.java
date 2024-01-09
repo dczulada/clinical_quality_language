@@ -142,6 +142,19 @@ public class ElmRequirementsContext {
         return reportedRequirements.get(ed);
     }
 
+    private HashMap<ExpressionDef, List<ValueSetRef>> visitedValueSets = new HashMap<ExpressionDef, List<ValueSetRef>>();
+    public List<ValueSetRef> getVisitedValueSets(ExpressionDef ed) {
+        return visitedValueSets.get(ed);
+    }
+    public void addVisitedValueSet(ExpressionDef ed, ValueSetRef valueSet) {
+        List<ValueSetRef> vs = visitedValueSets.get(ed);
+        if (vs == null){
+            vs = new <ValueSetRef>ArrayList();
+        }
+        vs.add(valueSet);
+        visitedValueSets.put(ed, vs);
+    }
+
     /*
     Inferred requirements are the result of the traversal, the computed/inferred data requirements for an expression.
     These are calculated by the visit and reported to the context here after the visit is complete

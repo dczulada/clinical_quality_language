@@ -1573,6 +1573,7 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
 
     @Override
     public ElmRequirement visitInValueSet(InValueSet elm, ElmRequirementsContext context) {
+        context.addVisitedValueSet(context.getCurrentExpressionDefContext().getExpressionDef(), elm.getValueset());
         if (elm.getCode() != null && (elm.getValueset() != null || elm.getValuesetExpression() != null)) {
             ElmRequirement left = visitElement(elm.getCode(), context);
             ElmRequirement right =

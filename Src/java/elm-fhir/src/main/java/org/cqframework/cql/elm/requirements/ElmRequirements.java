@@ -11,6 +11,9 @@ import java.net.URI;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import javax.xml.namespace.QName;
+
 import java.util.regex.Pattern;
 
 import static java.util.stream.Collectors.toList;
@@ -343,9 +346,44 @@ public class ElmRequirements extends ElmRequirement {
             }
         }
 
+        for (ElmFunctionRefContext functionRef : context.getFunctionReferences()){
+            List<ValueSetRef> visitedVsList = context.getVisitedValueSets(functionRef.getExpressionContext().getExpressionDef());
+            if (visitedVsList != null){
+                List<ElmDataRequirement> requirementsToAdd = new <ElmDataRequirement>ArrayList();
+                for (ValueSetRef visitedVs : visitedVsList){
+                    ElmRequirements modReq = context.getReportedRequirements(functionRef.getExpressionContext().getExpressionDef());
+                    for (ElmRequirement elmReq : modReq.getRequirements()){
+                        if (elmReq instanceof ElmDataRequirement){
+                            ElmDataRequirement elmDataReq = (ElmDataRequirement)elmReq;
+                            org.hl7.elm.r1.Retrieve ogRet = (org.hl7.elm.r1.Retrieve)elmDataReq.getElement();
+                            if (ogRet.getCodeComparator() == null){
+                                if (elmDataReq.getElement().getResultType() instanceof org.hl7.cql.model.ClassType){
+                                    Retrieve newDataRet = new Retrieve();
+                                    org.hl7.cql.model.ClassType myClass = (org.hl7.cql.model.ClassType)elmDataReq.getElement().getResultType();
+                                    newDataRet.setDataType(new QName("http://hl7.org/fhir",myClass.getLabel()));
+                                    newDataRet.setCodes(visitedVs);
+                                    newDataRet.setCodeComparator("in");
+                                    newDataRet.setCodeProperty(myClass.getPrimaryCodePath());
+                                    newDataRet.setTemplateId(myClass.getIdentifier());
+                                    requirementsToAdd.add(new ElmDataRequirement(elmDataReq.getLibraryIdentifier(), newDataRet));
+                                }
+                            }
+                        }
+                    }
+                }
+                for (ElmDataRequirement what : requirementsToAdd){
+                    result.reportRequirement(what);
+                }
+            }
+        }
+
         for (ElmRequirement requirement : result.getRequirements()){
             if (requirement instanceof ElmDataRequirement) {
                 ElmDataRequirement dataRequirement = (ElmDataRequirement)requirement;
+                if (dataRequirement.getRetrieve().getCodeProperty() == null){
+                    dataRequirement.getRetrieve().setTemplateId(null);
+                    dataRequirement.getRetrieve().setDataType(null);
+                }
                 if (dataRequirement.hasProperties()) {
                     List<Property> propertiesToRemove = new ArrayList<Property>();
                     for (Property p : dataRequirement.getProperties()) {
