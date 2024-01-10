@@ -301,6 +301,51 @@ public class ElmRequirements extends ElmRequirement {
             }
         }
 
+        for (ElmFunctionRefContext functionRef : context.getFunctionReferences()){
+            List<ValueSetRef> visitedVsList = context.getVisitedValueSets(functionRef.getExpressionContext());
+            if (visitedVsList != null){
+                List<ElmDataRequirement> requirementsToAdd = new <ElmDataRequirement>ArrayList();
+                for (ValueSetRef visitedVs : visitedVsList){
+                    if (visitedVs.getName().equals("Present On Admission is Yes or Exempt") || visitedVs.getName().equals("Present on Admission is No or Unable To Determine")){
+                        continue;
+                    }
+                    if (functions.get(functionRef.getFunction().getLibraryName() + "." + functionRef.getFunction().getName() + "()") != null){
+                        FunctionDef functionDef = (FunctionDef)functions.get(functionRef.getFunction().getLibraryName() + "." + functionRef.getFunction().getName() + "()").getElement();
+                        org.hl7.cql.model.ClassType resultClass = null;
+                        if (functionDef.getResultType() instanceof org.hl7.cql.model.ClassType){
+                            resultClass = (org.hl7.cql.model.ClassType)functionDef.getResultType();
+                        } else if (functionDef.getResultType() instanceof org.hl7.cql.model.ListType) {
+                            org.hl7.cql.model.ListType resultList = (org.hl7.cql.model.ListType)functionDef.getResultType();
+                            resultClass = (org.hl7.cql.model.ClassType)resultList.getElementType();
+                        }
+                        if (resultClass != null && resultClass.getPrimaryCodePath() != null){
+                            ElmRequirements funtionDataRequirements = context.getReportedRequirements(functionDef);
+                            if (funtionDataRequirements != null){
+                                for (ElmRequirement elmReq : funtionDataRequirements.getRequirements()){
+                                    if (elmReq instanceof ElmDataRequirement){
+                                        ElmDataRequirement funtionDataRequirement = (ElmDataRequirement)elmReq;
+                                        org.hl7.elm.r1.Retrieve ogRet = (org.hl7.elm.r1.Retrieve)funtionDataRequirement.getElement();
+                                        if (ogRet.getCodeComparator() == null){
+                                            Retrieve newDataRet = new Retrieve();
+                                            newDataRet.setDataType(new QName("http://hl7.org/fhir",resultClass.getLabel()));
+                                            newDataRet.setCodes(visitedVs);
+                                            newDataRet.setCodeComparator("in");
+                                            newDataRet.setCodeProperty(resultClass.getPrimaryCodePath());
+                                            newDataRet.setTemplateId(resultClass.getIdentifier());
+                                            requirementsToAdd.add(new ElmDataRequirement(funtionDataRequirement.getLibraryIdentifier(), newDataRet));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                for (ElmDataRequirement requirementToAdd : requirementsToAdd){
+                    // result.reportRequirement(requirementToAdd);
+                    retrievesByType.get(requirementToAdd.getRetrieve().getTemplateId()).add(requirementToAdd);
+                }
+            }
+        }
 
         // Equivalent
             // Has the same context, type/profile, code path and date path
@@ -342,37 +387,6 @@ public class ElmRequirements extends ElmRequirement {
                             includeElement.setIncludeFrom(mappedId);
                         }
                     }
-                }
-            }
-        }
-
-        for (ElmFunctionRefContext functionRef : context.getFunctionReferences()){
-            List<ValueSetRef> visitedVsList = context.getVisitedValueSets(functionRef.getExpressionContext().getExpressionDef());
-            if (visitedVsList != null){
-                List<ElmDataRequirement> requirementsToAdd = new <ElmDataRequirement>ArrayList();
-                for (ValueSetRef visitedVs : visitedVsList){
-                    ElmRequirements modReq = context.getReportedRequirements(functionRef.getExpressionContext().getExpressionDef());
-                    for (ElmRequirement elmReq : modReq.getRequirements()){
-                        if (elmReq instanceof ElmDataRequirement){
-                            ElmDataRequirement elmDataReq = (ElmDataRequirement)elmReq;
-                            org.hl7.elm.r1.Retrieve ogRet = (org.hl7.elm.r1.Retrieve)elmDataReq.getElement();
-                            if (ogRet.getCodeComparator() == null){
-                                if (elmDataReq.getElement().getResultType() instanceof org.hl7.cql.model.ClassType){
-                                    Retrieve newDataRet = new Retrieve();
-                                    org.hl7.cql.model.ClassType myClass = (org.hl7.cql.model.ClassType)elmDataReq.getElement().getResultType();
-                                    newDataRet.setDataType(new QName("http://hl7.org/fhir",myClass.getLabel()));
-                                    newDataRet.setCodes(visitedVs);
-                                    newDataRet.setCodeComparator("in");
-                                    newDataRet.setCodeProperty(myClass.getPrimaryCodePath());
-                                    newDataRet.setTemplateId(myClass.getIdentifier());
-                                    requirementsToAdd.add(new ElmDataRequirement(elmDataReq.getLibraryIdentifier(), newDataRet));
-                                }
-                            }
-                        }
-                    }
-                }
-                for (ElmDataRequirement what : requirementsToAdd){
-                    result.reportRequirement(what);
                 }
             }
         }

@@ -142,11 +142,11 @@ public class ElmRequirementsContext {
         return reportedRequirements.get(ed);
     }
 
-    private HashMap<ExpressionDef, List<ValueSetRef>> visitedValueSets = new HashMap<ExpressionDef, List<ValueSetRef>>();
-    public List<ValueSetRef> getVisitedValueSets(ExpressionDef ed) {
+    private HashMap<ElmExpressionDefContext, List<ValueSetRef>> visitedValueSets = new HashMap<ElmExpressionDefContext, List<ValueSetRef>>();
+    public List<ValueSetRef> getVisitedValueSets(ElmExpressionDefContext ed) {
         return visitedValueSets.get(ed);
     }
-    public void addVisitedValueSet(ExpressionDef ed, ValueSetRef valueSet) {
+    public void addVisitedValueSet(ElmExpressionDefContext ed, ValueSetRef valueSet) {
         List<ValueSetRef> vs = visitedValueSets.get(ed);
         if (vs == null){
             vs = new <ValueSetRef>ArrayList();
