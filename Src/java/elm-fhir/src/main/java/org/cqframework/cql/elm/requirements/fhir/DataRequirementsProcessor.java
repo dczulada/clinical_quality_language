@@ -696,6 +696,10 @@ public class DataRequirementsProcessor {
             cfc.setValueSet(toReference(context.resolveValueSetRef(declaredLibraryIdentifier, vsr)));
         }
 
+        if (value instanceof CodeRef) {
+            resolveCodeFilterCodes(context, libraryIdentifier, cfc, value);
+        }
+
         if (value instanceof org.hl7.elm.r1.ToList) {
             org.hl7.elm.r1.ToList toList = (org.hl7.elm.r1.ToList)value;
             resolveCodeFilterCodes(context, libraryIdentifier, cfc, toList.getOperand());
