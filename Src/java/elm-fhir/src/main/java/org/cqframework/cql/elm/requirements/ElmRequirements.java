@@ -394,7 +394,7 @@ public class ElmRequirements extends ElmRequirement {
         for (ElmRequirement requirement : result.getRequirements()){
             if (requirement instanceof ElmDataRequirement) {
                 ElmDataRequirement dataRequirement = (ElmDataRequirement)requirement;
-                if (dataRequirement.getRetrieve().getCodeProperty() == null){
+                if (dataRequirement.getRetrieve().getCodeProperty() == null && !dataRequirement.getRetrieve().getTemplateId().equals("http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient") ){
                     dataRequirement.getRetrieve().setTemplateId(null);
                     dataRequirement.getRetrieve().setDataType(null);
                 }
