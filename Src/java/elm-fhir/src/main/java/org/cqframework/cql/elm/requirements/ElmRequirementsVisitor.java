@@ -1,6 +1,7 @@
 package org.cqframework.cql.elm.requirements;
 
 import org.cqframework.cql.elm.visiting.ElmBaseLibraryVisitor;
+import org.hl7.cql.model.ChoiceType;
 import org.hl7.cql.model.ListType;
 import org.hl7.elm.r1.*;
 
@@ -1261,7 +1262,12 @@ public class ElmRequirementsVisitor extends ElmBaseLibraryVisitor <ElmRequiremen
                 qualifiedProperty.setResultTypeName(elm.getResultTypeName());
                 qualifiedProperty.setResultTypeSpecifier(elm.getResultTypeSpecifier());
                 qualifiedProperty.setLocalId(sourceProperty.getLocalId());
-                qualifiedProperty.setPath(sourceProperty.getPath() + "." + elm.getPath());
+                // Don't go down the rabbit hole here.
+                if (sourceProperty.getResultType() instanceof ChoiceType){
+                    qualifiedProperty.setPath(sourceProperty.getPath());
+                } else {
+                    qualifiedProperty.setPath(sourceProperty.getPath() + "." + elm.getPath());
+                } 
                 return context.reportProperty(qualifiedProperty, null);
             }
         }
