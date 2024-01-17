@@ -92,8 +92,12 @@ public class ElmQueryContext {
 
     // Is there a context with the alias
     public Boolean hasAlias(String alias) {
-        if (aliasContexts.size() > 0 && aliasContexts.get(0).getAlias().equals(alias)) {
-            return true;
+        if (aliasContexts.size() > 0) {
+            for (ElmQueryAliasContext aliasContexts : aliasContexts){
+                if (aliasContexts.getAlias().equals(alias)){
+                    return true;
+                }
+            }
         }
 
         return false;
