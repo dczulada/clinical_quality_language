@@ -38,6 +38,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class DataRequirementsProcessor {
 
@@ -821,7 +822,10 @@ public class DataRequirementsProcessor {
 
         // Add any additional code filters
         for (CodeFilterElement cfe : retrieve.getCodeFilter()) {
-            dr.getCodeFilter().add(toCodeFilterComponent(context, libraryIdentifier, cfe.getProperty(), cfe.getValue()));
+            // Only add the code filter if it doesn't already exist.
+            if (dr.getCodeFilter().stream().filter(x -> x.getPath().equals(cfe.getProperty())).collect(Collectors.toList()).isEmpty()){
+                dr.getCodeFilter().add(toCodeFilterComponent(context, libraryIdentifier, cfe.getProperty(), cfe.getValue()));
+            }
         }
 
         // Set date path if specified
